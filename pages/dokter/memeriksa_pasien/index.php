@@ -2,35 +2,36 @@
 include_once("../../../config/conn.php");
 session_start();
 
-if (isset($_SESSION['login'])) {
-  $_SESSION['login'] = true;
+// Ensure the user is logged in and has access as a doctor
+if (isset($_SESSION['login']) && $_SESSION['akses'] == 'dokter') {
+    $nama = $_SESSION['username'];
+    $doctor_id = $_SESSION['id']; // Assuming this is set during login
 } else {
-  echo "<meta http-equiv='refresh' content='0; url=../auth/login.php'>";
-  die();
+    echo "<meta http-equiv='refresh' content='0; url=../auth/login.php'>";
+    die();
 }
 
-$nama = $_SESSION['username'];
-$akses = $_SESSION['akses'];
+// Retrieve patients for the logged-in doctor
+$pasien = query("
+    SELECT 
+        periksa.id AS id_periksa,
+        pasien.id AS id_pasien,
+        periksa.catatan AS catatan,
+        daftar_poli.no_antrian AS no_antrian, 
+        pasien.nama AS nama_pasien, 
+        daftar_poli.keluhan AS keluhan,
+        daftar_poli.status_periksa AS status_periksa
+    FROM pasien 
+    INNER JOIN daftar_poli ON pasien.id = daftar_poli.id_pasien
+    INNER JOIN jadwal_periksa ON daftar_poli.id_jadwal = jadwal_periksa.id
+    INNER JOIN dokter ON jadwal_periksa.id_dokter = dokter.id
+    LEFT JOIN periksa ON daftar_poli.id = periksa.id_daftar_poli
+    WHERE dokter.id = $doctor_id
+    ORDER BY daftar_poli.no_antrian ASC
+");
 
-if ($akses != 'dokter') {
-  echo "<meta http-equiv='refresh' content='0; url=..'>";
-  die();
-}
-
-$pasien = query("SELECT
-                  periksa.id AS id_periksa,
-                  pasien.id AS id_pasien,
-                  periksa.catatan AS catatan,
-                  daftar_poli.no_antrian AS no_antrian, 
-                  pasien.nama AS nama_pasien, 
-                  daftar_poli.keluhan AS keluhan,
-                  daftar_poli.status_periksa AS status_periksa
-                FROM pasien 
-                INNER JOIN daftar_poli ON pasien.id = daftar_poli.id_pasien
-                LEFT JOIN periksa ON daftar_poli.id = periksa.id_daftar_poli");
-
-$periksa = query("SELECT * from periksa");
-
+// Retrieve other data
+$periksa = query("SELECT * FROM periksa");
 $obat = query("SELECT * FROM obat");
 ?>
 
